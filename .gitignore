@@ -1,0 +1,24 @@
+# Node
+node_modules/
+dist/
+.vite/
+*.log
+
+# Python
+venv/
+__pycache__/
+*.pyc
+
+# OS / Editor
+.DS_Store
+.env
+
+# Vite
+frontend/.vite/
+frontend/node_modules/
+
+# FastAPI build folders (if any)
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+backend/.idea/
