@@ -1,11 +1,10 @@
 from fastapi import APIRouter
 from app.schemas.story import StoryInput, StoryResponse
+from app.services.story_service import StoryService
 
 router = APIRouter()
 
 @router.post("/generate", response_model=StoryResponse)
-def generate_story(data: StoryInput):
-    text = data.text
-    storyline = text.split(".")  # placeholder
-    storyline = [s.strip() for s in storyline if s.strip()]
+async def generate_story(data: StoryInput):
+    storyline = StoryService.generate_panel(data)
     return StoryResponse(storyline=storyline)
