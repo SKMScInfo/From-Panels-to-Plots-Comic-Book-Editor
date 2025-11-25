@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 class StoryInput(BaseModel):
     story: str
-    fortuneSketch: str | None = None   # <--- added this
+    fortuneSketch: str 
 
 class StoryResponse(BaseModel):
-    storyline: list[str].  # list of image URLs or paths
+    storyline: list[str]
