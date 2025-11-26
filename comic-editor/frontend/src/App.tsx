@@ -73,7 +73,7 @@ export default function ComicStudio() {
   // -------------------------
 
   return (
-    <div className="h-screen flex bg-gray-50">
+    <div className="h-screen flex-row bg-gray-50" style={{display:"flex"}}>
       {/* LEFT TOOLBAR */}
       <Toolbar
         activeTool={activeTool}
