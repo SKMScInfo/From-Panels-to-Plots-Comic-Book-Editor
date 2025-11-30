@@ -1,20 +1,17 @@
 interface ToolButtonProps {
-  label: string;
+  icon: string;
   active: boolean;
   onClick: () => void;
 }
 
-export default function ToolButton({ label, active, onClick }: ToolButtonProps) {
+export default function ToolButton({ icon, active, onClick }: ToolButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-xs py-2 rounded transition ${
-        active
-          ? "bg-blue-500 text-white"
-          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-      }`}
+      className={`p-2 rounded flex items-center justify-center text-2xl
+                  ${active ? "bg-blue-200" : "bg-gray-100"}`}
     >
-      {label}
+      {icon}
     </button>
   );
 }

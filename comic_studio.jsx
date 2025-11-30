@@ -44,7 +44,7 @@ export default function ComicStudio() {
     // Default 3 panels per page for the prototype
     return {
       id: `page-${pageNum}`,
-      panels: Array.from({ length: 3 }).map((_, i) => ({
+      panels: Array.from({ length: 1 }).map((_, i) => ({
         id: `p-${pageNum}-${i}`,
         image: null, // canonical image URL or dataURL
         sketch: null, // dataURL of sketch

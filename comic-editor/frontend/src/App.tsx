@@ -3,6 +3,7 @@ import Toolbar from "./components/Toolbar";
 import Storyline from "./components/Storyline";
 import PanelEditor from "./components/PanelEditor";
 import PropertiesPanel from "./components/PropertiesPanel";
+import PromptAndSketch from "./components/PromptAndSketch";
 
 // TYPES -------------------------
 
@@ -33,6 +34,9 @@ export default function ComicStudio() {
   const [activeTool, setActiveTool] = useState<string>("smudge");
   const [promptText, setPromptText] = useState<string>("");
 
+  // NEW: fortune sketch state
+  const [fortuneSketch, setFortuneSketch] = useState<string | null>(null);
+
   // Canvas refs typed
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -42,7 +46,7 @@ export default function ComicStudio() {
   function createBlankPage(n: number): Page {
     return {
       id: `page-${n}`,
-      panels: Array.from({ length: 3 }).map((_, i): Panel => ({
+      panels: Array.from({ length: 1 }).map((_, i): Panel => ({
         id: `p-${n}-${i}`,
         image: null,
         sketch: null,
@@ -73,53 +77,73 @@ export default function ComicStudio() {
   // -------------------------
 
   return (
-    <div className="h-screen flex-row bg-gray-50" style={{display:"flex"}}>
-      {/* LEFT TOOLBAR */}
-      <Toolbar
-        activeTool={activeTool}
-        setActiveTool={setActiveTool}
-        createNewPage={createNewPage}
-        exportProject={exportProject}
-      />
+  <div className="h-screen bg-gray-50 flex">
+    {/* LEFT TOOLBAR */}
+    <Toolbar
+      activeTool={activeTool}
+      setActiveTool={setActiveTool}
+      createNewPage={createNewPage}
+      exportProject={exportProject}
+    />
 
-      {/* MAIN AREA */}
-      <main className="flex-1 p-4 flex flex-col gap-4">
+    {/* MAIN AREA: 2 columns -> 60% workspace | 40% storyline */}
+    <main className="flex-1 p-4 min-h-0">
+      <section className="h-full grid grid-cols-[3fr_2fr] gap-4 max-h-full min-h-0">
 
-        {/* STORYLINE (Top Bar) */}
-        <Storyline
-          pages={pages}
-          selectedPageIdx={selectedPageIdx}
-          selectedPanelIdx={selectedPanelIdx}
-          setSelectedPageIdx={setSelectedPageIdx}
-          setSelectedPanelIdx={setSelectedPanelIdx}
-        />
+        {/* LEFT 60% */}
+        <div className="grid grid-rows-[auto_1fr_auto] gap-4 h-full min-h-0 overflow-y-auto">
 
-        {/* MAIN EDITOR AREA: Panel Editor + Right Sidebar */}
-        <section className="flex-1 grid grid-cols-3 gap-4">
-
-          {/* MAIN PANEL EDITOR */}
-          <PanelEditor
-            pages={pages}
-            setPages={setPages}
-            selectedPageIdx={selectedPageIdx}
-            selectedPanelIdx={selectedPanelIdx}
-            activeTool={activeTool}
-            canvasRef={canvasRef}
-            ctxRef={ctxRef}
-            promptText={promptText}
-          />
-
-          {/* RIGHT SIDE PROPERTIES */}
-          <PropertiesPanel
-            pages={pages}
-            setPages={setPages}
-            selectedPageIdx={selectedPageIdx}
-            selectedPanelIdx={selectedPanelIdx}
+          {/* Row 1 */}
+          <PromptAndSketch
             promptText={promptText}
             setPromptText={setPromptText}
+            fortuneSketch={fortuneSketch}
+            setFortuneSketch={setFortuneSketch}
           />
-        </section>
-      </main>
-    </div>
-  );
+
+          {/* Row 2 — grows properly */}
+          <div className="overflow-hidden">
+            <PanelEditor
+              pages={pages}
+              setPages={setPages}
+              selectedPageIdx={selectedPageIdx}
+              selectedPanelIdx={selectedPanelIdx}
+              activeTool={activeTool}
+              canvasRef={canvasRef}
+              ctxRef={ctxRef}
+              promptText={promptText}
+            />
+          </div>
+
+          {/* Row 3 */}
+          <div className="h-48">
+            <PropertiesPanel
+              pages={pages}
+              setPages={setPages}
+              selectedPageIdx={selectedPageIdx}
+              selectedPanelIdx={selectedPanelIdx}
+              promptText={promptText}
+              setPromptText={setPromptText}
+            />
+          </div>
+
+        </div>
+
+        {/* RIGHT 40% */}
+        <div className="h-full overflow-y-auto min-h-0">
+          <Storyline
+            pages={pages}
+            selectedPageIdx={selectedPageIdx}
+            selectedPanelIdx={selectedPanelIdx}
+            setSelectedPageIdx={setSelectedPageIdx}
+            setSelectedPanelIdx={setSelectedPanelIdx}
+          />
+        </div>
+
+      </section>
+
+    </main>
+  </div>
+);
+
 }
