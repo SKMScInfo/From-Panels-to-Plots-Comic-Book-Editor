@@ -1,5 +1,27 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from pydantic import BaseModel
+from typing import Optional, List
+
+
+class Tone(BaseModel):
+    brightness: float = 1.0
+    contrast: float = 1.0
+    palette: Optional[str] = None
+
+
+class Panel(BaseModel):
+    id: str
+    image: Optional[str] = None      # base64 OR path
+    sketch: Optional[str] = None     # base64
+    tone: Tone = Tone()
+    caption: str = ""
+
+
+class Page(BaseModel):
+    id: str
+    storySentence: str = ""
+    panels: List[Panel]
 
 
 # ---------------------
@@ -8,10 +30,11 @@ from typing import Optional, List
 class StoryRequest(BaseModel):
     story: str
     fortuneSketch: Optional[str] = None  # base64
+    characterName: str
 
 
 class StoryResponse(BaseModel):
-    characters: List[str] = []
+    pages: List[Page]
     summary: str = ""
     # add more fields if needed
 
@@ -20,13 +43,14 @@ class StoryResponse(BaseModel):
 # Generate Comic Page
 # ---------------------
 class ComicGenerateRequest(BaseModel):
-    sketch: Optional[str] = None        # base64
-    prompt: str                         # page sentence
-    currentImage: Optional[str] = None  # base64
+    sketch: Optional[str] = None      # base64
+    prompt: str                       # page sentence
+    page: Page                        # full current page
 
 
 class ComicGenerateResponse(BaseModel):
-    image: str  # base64
+    page: Page    # updated page object
+
 
 
 # ---------------------
@@ -35,22 +59,24 @@ class ComicGenerateResponse(BaseModel):
 class ComicGenerateAllRequest(BaseModel):
     sketch: Optional[str] = None
     prompt: str
-    images: List[Optional[str]]         # list of base64 images
+    pages: List[Page]   # full pages
 
 
 class ComicGenerateAllResponse(BaseModel):
-    images: List[str]  # updated list
+    pages: List[Page]
+
 
 
 # ---------------------
 # Tools
 # ---------------------
 class SmudgeRequest(BaseModel):
-    image: str  # base64
+    page: Page
+
 
 
 class ToneRequest(BaseModel):
-    image: str
+    page: Page
     tone: str
 
 
@@ -60,13 +86,14 @@ class ColorFillPoint(BaseModel):
 
 
 class ColorFillRequest(BaseModel):
-    image: str
+    page: Page
     point: ColorFillPoint
     color: str
 
 
 class ToolImageResponse(BaseModel):
-    image: str
+    page: Page
+
 
 
 # ---------------------
@@ -74,8 +101,7 @@ class ToolImageResponse(BaseModel):
 # ---------------------
 class NewPageResponse(BaseModel):
     id: str
-    storySentence: str
-    panels: List[dict]  # your FE uses {id, image, sketch, tone, caption}
+    page: Page
 
 
 # ---------------------
@@ -83,7 +109,7 @@ class NewPageResponse(BaseModel):
 # ---------------------
 class ExportRequest(BaseModel):
     path: str
-    pages: List[dict]
+    pages: List[Page]
 
 
 class ExportResponse(BaseModel):

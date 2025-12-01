@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from models.schemas import NewPageResponse, ExportRequest, ExportResponse
+from app.schemas.schemas import NewPageResponse, ExportRequest, ExportResponse
 import uuid
 import json
 

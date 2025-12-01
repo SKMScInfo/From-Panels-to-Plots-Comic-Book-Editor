@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from models.schemas import (
+from app.schemas.schemas import (
     SmudgeRequest, ToneRequest,
     ColorFillRequest, ToolImageResponse
 )
