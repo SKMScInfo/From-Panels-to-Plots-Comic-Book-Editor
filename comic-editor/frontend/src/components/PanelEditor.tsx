@@ -40,15 +40,18 @@ export default function PanelEditor({
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    if (panel.image || panel.sketch) {
+    // ⭐ ONLY show the generated comic book image
+    if (panel.image) {
       const img = new Image();
-      img.src = panel.image || panel.sketch!;
+      img.src = panel.image;
       img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     } else {
+      // blank white when no comic generated yet
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
   }, [pages, selectedPageIdx, selectedPanelIdx]);
+
 
   // coordinate scaling for sketch canvas
   function getSketchCoords(e: React.PointerEvent<HTMLCanvasElement>) {

@@ -1,10 +1,21 @@
-from fastapi import APIRouter, UploadFile, File
-from app.services.image_service import ImageService
-from app.schemas.image import ComicBookPageInput, ComicBookPageResponse
+from fastapi import APIRouter
+from models.schemas import (
+    ComicGenerateRequest,
+    ComicGenerateResponse,
+    ComicGenerateAllRequest,
+    ComicGenerateAllResponse,
+)
 
-router = APIRouter()
+router = APIRouter(prefix="/image")
 
-@router.post("/generate")
-async def generate_image(data: ComicBookPageInput):
-    img = ImageService.generate_panel(data)
-    return ComicBookPageResponse(comicBookImage= img)
+
+@router.post("/generate", response_model=ComicGenerateResponse)
+async def generate_comic_page(data: ComicGenerateRequest):
+    # TODO: plug your model
+    return ComicGenerateResponse(image=data.currentImage or data.sketch or "")
+
+
+@router.post("/generateAll", response_model=ComicGenerateAllResponse)
+async def generate_comic_globally(data: ComicGenerateAllRequest):
+    # TODO: plug your model
+    return ComicGenerateAllResponse(images=data.images)
