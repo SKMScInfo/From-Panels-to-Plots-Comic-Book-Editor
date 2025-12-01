@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import type { Page } from "../types";
+import { generateComicPage } from "../api/imageApi";
 
 interface PanelEditorProps {
   pages: Page[];
@@ -43,7 +44,7 @@ export default function PanelEditor({
     // ⭐ ONLY show the generated comic book image
     if (panel.image) {
       const img = new Image();
-      img.src = panel.image;
+      img.src = `http://localhost:8000${panel.image}`;
       img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     } else {
       // blank white when no comic generated yet
@@ -149,6 +150,49 @@ export default function PanelEditor({
       return copy;
     });
   }
+async function handleGenerateComicPage() {
+
+   const sketchBase64 =
+    sketchCanvasRef.current?.toDataURL("image/png") || "";
+  const response = await generateComicPage(
+    page.storySentence,
+    sketchBase64,
+    pages[selectedPageIdx]
+  );
+
+  console.log("Backend response:", response);
+
+  // ---- update FE state with new image ----
+  setPages((old) => {
+    const copy = structuredClone(old);
+    copy[selectedPageIdx] = response.page;
+    return copy;
+  });
+
+  // ---- draw new image in right canvas ----
+  const canvas = outputCanvasRef.current;
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  requestAnimationFrame(() => {
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // sometimes needed
+    img.src = `http://localhost:8000${response.page.panels[0].image}`;
+
+    img.onload = () => {
+      console.log("Drawing image:", img.src);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+
+    img.onerror = (err) => {
+      console.error("IMAGE LOAD ERROR", err);
+    };
+  });
+}
+
 
  return (
   <div className="bg-white rounded shadow p-4 h-full flex flex-col">
@@ -222,7 +266,7 @@ export default function PanelEditor({
 
     {/* ROW 2: Generation buttons */}
     <div className="flex flex-row gap-3 justify-between mb-2">
-      <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded">
+      <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded" onClick={handleGenerateComicPage}>
         Generate comic page
       </button>
 

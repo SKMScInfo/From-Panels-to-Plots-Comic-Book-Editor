@@ -1,4 +1,3 @@
-import React from "react";
 import PanelThumbnail from "./PanelThumbnail";
 import type { Page } from "../types";
 

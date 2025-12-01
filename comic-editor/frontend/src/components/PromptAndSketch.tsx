@@ -1,12 +1,13 @@
 import React, { useEffect, useRef } from "react";
 import { sendStoryAndFortuneSketch } from "../api/storyApi";
-
+import type { Page } from "../types";
 
 interface PromptAndSketchProps {
   promptText: string;
   setPromptText: (v: string) => void;
   fortuneSketch: string | null;
   setFortuneSketch: (dataUrl: string) => void;
+  setPages: React.Dispatch<React.SetStateAction<Page[]>>;
 }
 
 export default function PromptAndSketch({
@@ -14,6 +15,7 @@ export default function PromptAndSketch({
   setPromptText,
   fortuneSketch,
   setFortuneSketch,
+  setPages,
 }: PromptAndSketchProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const drawing = useRef(false);
@@ -90,6 +92,12 @@ export default function PromptAndSketch({
     );
 
     console.log("Backend response:", response);
+
+    // response: { pages: Page[], summary: string }
+    setPages(response.pages);        // ✅ use pages only
+
+    // optional: if you want to keep summary somewhere:
+    // setStorySummary(response.summary);
   }
 
 

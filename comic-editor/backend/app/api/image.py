@@ -5,6 +5,7 @@ from app.schemas.schemas import (
     ComicGenerateAllRequest,
     ComicGenerateAllResponse,
 )
+from app.utils.file_utils import return_one_default_page
 
 router = APIRouter(prefix="/image")
 
@@ -12,7 +13,7 @@ router = APIRouter(prefix="/image")
 @router.post("/generate", response_model=ComicGenerateResponse)
 async def generate_comic_page(data: ComicGenerateRequest):
     # TODO: plug your model
-    return ComicGenerateResponse(image=data.currentImage or data.sketch or "")
+    return ComicGenerateResponse(page=return_one_default_page())
 
 
 @router.post("/generateAll", response_model=ComicGenerateAllResponse)

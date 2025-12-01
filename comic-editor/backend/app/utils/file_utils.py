@@ -5,7 +5,7 @@ def save_file(upload_file, path):
         buffer.write(upload_file.file.read())
 
 def return_all_default_pages():
-    base = "/Users/personal/Desktop/ProjetInteractionHumainIA/comic-editor/backend/content/comicbookpage"
+    base = "/content/comicbookpage"
 
     pages = []
     for i in range(1, 11):
@@ -37,7 +37,7 @@ def return_one_default_page():
         "panels": [
             {
                 "id": "p-1-0",
-                "image": "/Users/personal/Desktop/ProjetInteractionHumainIA/comic-editor/backend/content/comicbookpage1.png",
+                "image": "/content/comicbookpage2.png",
                 "sketch": None,
                 "tone": {
                     "brightness": 1.0,

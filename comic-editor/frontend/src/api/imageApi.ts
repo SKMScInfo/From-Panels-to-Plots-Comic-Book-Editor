@@ -1,9 +1,10 @@
+import type { Page } from "../types";
 import { apiRequest } from "./client";
 
 export async function generateComicPage(
   sketchBase64: string | null,
   pagePrompt: string,
-  currentImageBase64: string | null
+  currentImageBase64: Page | null
 ) {
   return apiRequest("/image/generate", {
     method: "POST",
@@ -11,7 +12,7 @@ export async function generateComicPage(
     body: JSON.stringify({
       sketch: sketchBase64,
       prompt: pagePrompt,
-      currentImage: currentImageBase64,
+      page: currentImageBase64,
     }),
   });
 }

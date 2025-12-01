@@ -99,6 +99,7 @@ export default function ComicStudio() {
             setPromptText={setPromptText}
             fortuneSketch={fortuneSketch}
             setFortuneSketch={setFortuneSketch}
+            setPages={setPages}
           />
 
           {/* Row 2 — grows properly */}
