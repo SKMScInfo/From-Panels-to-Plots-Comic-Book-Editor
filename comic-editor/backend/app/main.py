@@ -39,7 +39,7 @@ app.include_router(api_router)
 
 # # --- Test route ---
 # @app.get("/ping")
-# def ping():
+# async def ping():
 #     return {"message": "pong"}
 
 
