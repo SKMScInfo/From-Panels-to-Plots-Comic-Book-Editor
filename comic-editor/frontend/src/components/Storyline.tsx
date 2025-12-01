@@ -18,12 +18,12 @@ export default function Storyline({
 }: StorylineProps) {
   return (
     <section className="bg-white rounded-lg shadow p-4 h-full flex flex-col">
-      <h3 className="font-semibold mb-3">Storyline</h3>
+      
+      <h3 className="font-semibold mb-3 text-gray-800">Storyline</h3>
 
-      {/* Scrollable list */}
       <div className="overflow-y-auto flex-1 flex flex-col gap-4 min-h-0">
         {pages.map((page, pIdx) => {
-          const panel = page.panels[0]; // only ONE panel per page
+          const panel = page.panels[0];
 
           return (
             <div
@@ -39,21 +39,25 @@ export default function Storyline({
                 setSelectedPanelIdx(0);
               }}
             >
-              {/* LEFT SIDE — page number + caption */}
+              {/* LEFT SIDE */}
               <div className="flex flex-col w-[30%] gap-1">
-                <div className="font-semibold text-sm">
+                <div className="font-semibold text-sm text-gray-800">
                   Page {pIdx + 1}
                 </div>
-                <div className="text-xs text-gray-500">Caption:</div>
-                <div className="text-sm font-medium">
-                  {page.storySentence}
+
+                <div className="text-xs text-gray-500">
+                  Caption:
+                </div>
+
+                <div className="text-sm font-medium text-gray-700">
+                  {page.storySentence || "No caption"}
                 </div>
               </div>
 
               {/* RIGHT SIDE — panel preview */}
-                <div className="w-full aspect-video border rounded overflow-hidden bg-white">
-                  <PanelThumbnail panel={panel} />
-                </div>
+              <div className="w-full aspect-video border rounded overflow-hidden bg-white">
+                <PanelThumbnail panel={panel} />
+              </div>
 
             </div>
           );

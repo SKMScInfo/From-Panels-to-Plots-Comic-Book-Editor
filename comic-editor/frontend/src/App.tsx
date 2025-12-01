@@ -102,7 +102,7 @@ export default function ComicStudio() {
           />
 
           {/* Row 2 — grows properly */}
-          <div className="overflow-hidden">
+          <div className="overflow-hidden" style={{minHeight:"450px"}}>
             <PanelEditor
               pages={pages}
               setPages={setPages}

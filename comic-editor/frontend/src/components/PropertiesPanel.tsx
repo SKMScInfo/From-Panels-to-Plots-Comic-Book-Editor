@@ -1,7 +1,6 @@
 import React from "react";
 import type { Page } from "../types";
 
-
 interface PropertiesProps {
   pages: Page[];
   setPages: React.Dispatch<React.SetStateAction<Page[]>>;
@@ -12,43 +11,29 @@ interface PropertiesProps {
 }
 
 export default function PropertiesPanel({
-  pages,
-  setPages,
-  selectedPageIdx,
-  selectedPanelIdx,
   promptText,
   setPromptText,
 }: PropertiesProps) {
-  const page = pages[selectedPageIdx];
-  const panel = page.panels[selectedPanelIdx];
+  return ( null
+    // <aside className="bg-white rounded shadow p-4 flex flex-col gap-4">
 
-  function updateCaption(v: string) {
-    setPages((old) => {
-      const copy = structuredClone(old);
-      copy[selectedPageIdx].panels[selectedPanelIdx].caption = v;
-      return copy;
-    });
-  }
+    //   {/* Horizontal buttons */}
+    //   <div className="flex flex-row gap-3 justify-between">
 
-  function updatePageSentence(v: string) {
-    setPages((old) => {
-      const copy = structuredClone(old);
-      copy[selectedPageIdx].storySentence = v;
-      return copy;
-    });
-  }
+    //     <button className="bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded flex-1 text-center">
+    //       Generate comic page
+    //     </button>
 
-  return (
-    <aside className="bg-white rounded shadow p-4 flex flex-col gap-4">
+    //     <button className="bg-gray-700 hover:bg-gray-800 text-white text-xs py-2 px-3 rounded flex-1 text-center">
+    //       Apply inputs locally
+    //     </button>
 
-      <div>
-        <label className="text-xs text-gray-500">Page sentence</label>
-        <input
-          className="w-full border rounded p-2 mt-1"
-          value={page.storySentence}
-          onChange={(e) => updatePageSentence(e.target.value)}
-        />
-      </div>
-    </aside>
+    //     <button className="bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 px-3 rounded flex-1 text-center">
+    //       Apply inputs globally
+    //     </button>
+
+    //   </div>
+
+    // </aside>
   );
 }

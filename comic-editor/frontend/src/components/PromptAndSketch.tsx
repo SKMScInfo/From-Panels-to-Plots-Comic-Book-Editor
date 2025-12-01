@@ -1,4 +1,6 @@
 import React, { useEffect, useRef } from "react";
+import { sendStoryAndFortuneSketch } from "../api/storyApi";
+
 
 interface PromptAndSketchProps {
   promptText: string;
@@ -42,30 +44,54 @@ export default function PromptAndSketch({
     ctx.stroke();
   }, [fortuneSketch]);
 
+  function getCoords(e: React.PointerEvent<HTMLCanvasElement>) {
+    const canvas = canvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
   function handleDown(e: React.PointerEvent<HTMLCanvasElement>) {
     drawing.current = true;
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    const rect = canvas.getBoundingClientRect();
+    const ctx = canvasRef.current!.getContext("2d")!;
+    const { x, y } = getCoords(e);
+
     ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    ctx.moveTo(x, y);
   }
 
   function handleMove(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!drawing.current) return;
-    const canvas = canvasRef.current!;
-    const ctx = canvas.getContext("2d")!;
-    const rect = canvas.getBoundingClientRect();
-    ctx.strokeStyle = "#777";
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+    const ctx = canvasRef.current!.getContext("2d")!;
+    const { x, y } = getCoords(e);
+
+    ctx.lineTo(x, y);
     ctx.stroke();
   }
+
 
   function handleUp() {
     drawing.current = false;
     const canvas = canvasRef.current!;
     setFortuneSketch(canvas.toDataURL("image/png"));
   }
+
+  async function handleGenerateStory() {
+    const response = await sendStoryAndFortuneSketch(
+      promptText,
+      fortuneSketch,
+      characterName
+    );
+
+    console.log("Backend response:", response);
+  }
+
 
   return (
     <div className="bg-white rounded-lg shadow p-4 flex flex-col gap-3">
@@ -116,7 +142,7 @@ export default function PromptAndSketch({
       </div>
       <button
         className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition w-full"
-        onClick={() => console.log("Generate comic book triggered")}
+        onClick={handleGenerateStory}
       >
         Generate comic book
       </button>
