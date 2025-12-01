@@ -113,3 +113,4 @@ class ExportRequest(BaseModel):
 
 class ExportResponse(BaseModel):
     status: str
+    path: Optional[str] = None
