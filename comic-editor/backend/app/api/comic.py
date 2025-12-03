@@ -88,38 +88,38 @@ async def new_page():
 
 
 
-# ---------------------
-# Single Page Generation
-# ---------------------
-@router.post("/generate", response_model=ComicGenerateResponse)
-async def generate_comic_page(data: ComicGenerateRequest):
-    generated_page = _apply_demo_generation_to_page(
-        page=data.page,
-        prompt=data.prompt,
-        index=0,
-        total=1,
-    )
-    return ComicGenerateResponse(page=generated_page)
+# # ---------------------
+# # Single Page Generation
+# # ---------------------
+# @router.post("/generate", response_model=ComicGenerateResponse)
+# async def generate_comic_page(data: ComicGenerateRequest):
+#     generated_page = _apply_demo_generation_to_page(
+#         page=data.page,
+#         prompt=data.prompt,
+#         index=0,
+#         total=1,
+#     )
+#     return ComicGenerateResponse(page=generated_page)
 
 
-# ---------------------
-# All Pages Generation
-# ---------------------
-@router.post("/generate-all", response_model=ComicGenerateAllResponse)
-async def generate_comic_all(data: ComicGenerateAllRequest):
-    total = len(data.pages) if data.pages else 1
-    generated_pages: List[Page] = []
+# # ---------------------
+# # All Pages Generation
+# # ---------------------
+# @router.post("/generate-all", response_model=ComicGenerateAllResponse)
+# async def generate_comic_all(data: ComicGenerateAllRequest):
+#     total = len(data.pages) if data.pages else 1
+#     generated_pages: List[Page] = []
 
-    for idx, page in enumerate(data.pages):
-        new_page = _apply_demo_generation_to_page(
-            page=page,
-            prompt=data.prompt,
-            index=idx,
-            total=total,
-        )
-        generated_pages.append(new_page)
+#     for idx, page in enumerate(data.pages):
+#         new_page = _apply_demo_generation_to_page(
+#             page=page,
+#             prompt=data.prompt,
+#             index=idx,
+#             total=total,
+#         )
+#         generated_pages.append(new_page)
 
-    return ComicGenerateAllResponse(pages=generated_pages)
+#     return ComicGenerateAllResponse(pages=generated_pages)
 
 
 # ---------------------
