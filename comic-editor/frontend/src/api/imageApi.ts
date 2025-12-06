@@ -20,7 +20,7 @@ export async function generateComicPage(
 export async function applyChangesGlobally(
   sketchBase64: string | null,
   pagePrompt: string,
-  allImages: (string | null)[]
+  pages: (Page | null)[]
 ) {
   return apiRequest("/image/generateAll", {
     method: "POST",
@@ -28,7 +28,7 @@ export async function applyChangesGlobally(
     body: JSON.stringify({
       sketch: sketchBase64,
       prompt: pagePrompt,
-      images: allImages,
+      pages: pages,
     }),
   });
 }

@@ -1,57 +1,52 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.cors import CORSMiddleware as StarletteCORS
 import os
 
 from app.api import api_router
 
-
 app = FastAPI()
 
-# Get absolute path to backend/content/
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONTENT_DIR = os.path.join(BASE_DIR, "content")
 
-print("STATIC FILES LOADING FROM:", CONTENT_DIR)
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
-app.mount(
-    "/content",
-    StaticFiles(directory=CONTENT_DIR),
-    name="content"
-)
-
-# --- CORS so React frontend can talk to backend ---
+# 1. Global CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # in production change this to your domain
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-
+# 2. API routes FIRST
 app.include_router(api_router)
 
+# 3. TEST ROUTE — MUST NOT BE UNDER /content/*
+@app.get("/content-test")
+def test_check():
+    return {"ok": True}
 
+# 4. Static files LAST
+static_files_app = StaticFiles(directory=CONTENT_DIR)
+static_files_app = StarletteCORS(
+    app=static_files_app,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["GET"],
+    allow_headers=["*"],
+)
 
+app.mount("/content", static_files_app, name="content")
 
-
-
-# # --- Test route ---
-# @app.get("/ping")
-# async def ping():
-#     return {"message": "pong"}
-
-
-# # --- Endpoint to receive user story + sketch (base64) ---
-# @app.post("/generate")
-# async def generate(data: dict):
-#     story_text = data.get("story", "")
-#     sketch = data.get("sketch", None)  # base64 string (optional)
-
-#     # Here later you'll call your ML model
-#     return {
-#         "received_text": story_text,
-#         "received_sketch": sketch is not None,
-#         "status": "ok"
-#     }
+print(CONTENT_DIR)
+print("CONTENT_DIR EXISTS:", os.path.exists(CONTENT_DIR))
+print("\nREGISTERED ROUTES:")
+for r in app.routes:
+    print(" -", r.path, "  (name:", r.name, ")")

@@ -1,6 +1,6 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Page } from "../types";
-import { generateComicPage } from "../api/imageApi";
+import { applyChangesGlobally, generateComicPage } from "../api/imageApi";
 
 interface PanelEditorProps {
   pages: Page[];
@@ -19,6 +19,7 @@ export default function PanelEditor({
   selectedPageIdx,
   selectedPanelIdx
 }: PanelEditorProps) {
+  const [sketchPrompt, setSketchPrompt] = useState<string>("");
   const sketchCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const sketchCtxRef = useRef<CanvasRenderingContext2D | null>(null);
 
@@ -29,6 +30,36 @@ export default function PanelEditor({
 
   const page = pages[selectedPageIdx];
   const panel = page.panels[selectedPanelIdx];
+
+  function drawImageContain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, canvas: HTMLCanvasElement) {
+    const iw = img.width;
+    const ih = img.height;
+    const cw = canvas.width;
+    const ch = canvas.height;
+
+    // Image aspect ratio
+    const imageRatio = iw / ih;
+    const canvasRatio = cw / ch;
+
+    let renderWidth, renderHeight, xStart, yStart;
+
+    if (imageRatio > canvasRatio) {
+      // Image is wider relative to canvas → fit width
+      renderWidth = cw;
+      renderHeight = cw / imageRatio;
+      xStart = 0;
+      yStart = (ch - renderHeight) / 2;
+    } else {
+      // Image is taller relative to canvas → fit height
+      renderHeight = ch;
+      renderWidth = ch * imageRatio;
+      xStart = (cw - renderWidth) / 2;
+      yStart = 0;
+    }
+
+    ctx.drawImage(img, xStart, yStart, renderWidth, renderHeight);
+  }
+
 
   // load right canvas image
   useEffect(() => {
@@ -44,8 +75,11 @@ export default function PanelEditor({
     // ⭐ ONLY show the generated comic book image
     if (panel.image) {
       const img = new Image();
-      img.src = `http://localhost:8000${panel.image}`;
-      img.onload = () => ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.crossOrigin = "anonymous";  // ⭐ REQUIRED
+      img.src = `http://localhost:8000${panel.image}?v=${Date.now()}`; // ⭐ Cache buster
+
+      img.onload = () => drawImageContain(ctx, img, canvas);;
+      img.onerror = (e) => console.warn("CORS load error:", e);
     } else {
       // blank white when no comic generated yet
       ctx.fillStyle = "#fff";
@@ -135,63 +169,134 @@ export default function PanelEditor({
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    setPages(old => {
-      const copy = structuredClone(old);
-      copy[selectedPageIdx].panels[selectedPanelIdx].image = null;
-      return copy;
-    });
+    console.log("RESET OUTPUT IMAGE PATH:", pages[selectedPageIdx].panels[selectedPanelIdx].image);
+
+    const img = new Image();
+    img.crossOrigin = "anonymous"; // sometimes needed
+    img.src = `http://localhost:8000${pages[selectedPageIdx].panels[selectedPanelIdx].image}?v=${Date.now()}`;
+    img.onload = () => drawImageContain(ctx, img, canvas);;
   }
 
   // update page sentence
-  function updatePageSentence(v: string) {
-    setPages(old => {
-      const copy = structuredClone(old);
-      copy[selectedPageIdx].storySentence = v;
-      return copy;
+  // function updatePageSentence(v: string) {
+  //   setPages(old => {
+  //     const copy = structuredClone(old);
+  //     copy[selectedPageIdx].storySentence = v;
+  //     return copy;
+  //   });
+  // }
+  async function handleGenerateComicPage() {
+    const sketchBase64 =
+      sketchCanvasRef.current?.toDataURL("image/png") || "";
+    const response = await generateComicPage(
+      page.storySentence,
+      sketchBase64,
+      pages[selectedPageIdx]
+    );
+
+    console.log("Backend response:", response);
+
+    //---- update FE state with new image ----
+    // setPages((old) => {
+    //   const copy = structuredClone(old);
+    //   copy[selectedPageIdx] = response.page;
+    //   return copy;
+    // });
+
+    // ---- draw new image in right canvas ----
+    const canvas = outputCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    requestAnimationFrame(() => {
+      const img = new Image();
+      img.crossOrigin = "anonymous"; // sometimes needed
+      img.src = `http://localhost:8000${response.page.panels[0].image}?v=${Date.now()}`;
+
+      img.onload = () => {
+        console.log("Drawing image:", img.src);
+        drawImageContain(ctx, img, canvas);;
+      };
+
+      img.onerror = (err) => {
+        console.error("IMAGE LOAD ERROR", err);
+      };
     });
   }
-async function handleGenerateComicPage() {
 
-   const sketchBase64 =
+  // async function saveCurrentOutput() {
+  //   const canvas = outputCanvasRef.current;
+  //   if (!canvas) return;
+
+  //   const imageData = canvas.toDataURL("image/png");
+
+  //   const currentPath =
+  //     pages[selectedPageIdx].panels[selectedPanelIdx].image;
+
+  //   await fetch("http://localhost:8000/image/overwrite", {
+  //     method: "POST",
+  //     headers: { "Content-Type": "application/json" },
+  //     body: JSON.stringify({
+  //       image: imageData,
+  //       path: currentPath
+  //     })
+  //   });
+
+  //   setPages(old => {
+  //     const copy = structuredClone(old);
+  //     return copy; // 🔥 triggers re-render because reference changed
+  //   });
+
+
+  //   console.log("Image overwritten at:", currentPath);
+  // }
+  
+  async function saveCurrentOutput() {
+    const canvas = outputCanvasRef.current;
+    if (!canvas) return;
+
+    // Convert canvas → Blob WITHOUT reading pixels manually
+    canvas.toBlob(async (blob) => {
+      const formData = new FormData();
+      formData.append("file", blob, "canvas.png");
+      formData.append("path", pages[selectedPageIdx].panels[selectedPanelIdx].image);
+
+      await fetch("http://localhost:8000/image/overwrite", {
+        method: "POST",
+        body: formData,
+      });
+
+      const oldPath = pages[selectedPageIdx].panels[selectedPanelIdx].image;
+
+      const newPath = `${oldPath}?v=${Date.now()}`;
+
+      setPages(old => {
+        const copy = structuredClone(old);
+        copy[selectedPageIdx].panels[selectedPanelIdx].image = newPath;
+        return copy;
+      });
+
+      console.log("Saved successfully!");
+    }, "image/png");
+  }
+
+  async function applyGlobally() {
+    const sketchBase64 =
     sketchCanvasRef.current?.toDataURL("image/png") || "";
-  const response = await generateComicPage(
-    page.storySentence,
-    sketchBase64,
-    pages[selectedPageIdx]
-  );
+    const response = await applyChangesGlobally(
+      page.storySentence,
+      sketchBase64,
+      pages
+    );
 
-  console.log("Backend response:", response);
+    console.log("Backend response:", response);
+    setPages(response.pages);
+  }
 
-  // ---- update FE state with new image ----
-  setPages((old) => {
-    const copy = structuredClone(old);
-    copy[selectedPageIdx] = response.page;
-    return copy;
-  });
 
-  // ---- draw new image in right canvas ----
-  const canvas = outputCanvasRef.current;
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return;
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  requestAnimationFrame(() => {
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // sometimes needed
-    img.src = `http://localhost:8000${response.page.panels[0].image}`;
-
-    img.onload = () => {
-      console.log("Drawing image:", img.src);
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    };
-
-    img.onerror = (err) => {
-      console.error("IMAGE LOAD ERROR", err);
-    };
-  });
-}
 
 
  return (
@@ -238,10 +343,11 @@ async function handleGenerateComicPage() {
 
       {/* Page sentence */}
       <div>
-        <label className="text-xs text-gray-500">Page sentence</label>
+        <label className="text-xs text-gray-500">Sketch keywords</label>
         <input
-          value={page.storySentence}
-          onChange={e => updatePageSentence(e.target.value)}
+          value={sketchPrompt}
+          onChange={e => setSketchPrompt(e.target.value)}
+          placeholder="Enter Keywords here"
           className="w-full border rounded p-2 mt-1"
         />
       </div>
@@ -267,15 +373,15 @@ async function handleGenerateComicPage() {
     {/* ROW 2: Generation buttons */}
     <div className="flex flex-row gap-3 justify-between mb-2">
       <button className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs py-2 px-3 rounded" onClick={handleGenerateComicPage}>
-        Generate comic page
+        Add sketch to Page Preview
       </button>
 
-      <button className="flex-1 bg-gray-700 hover:bg-gray-800 text-white text-xs py-2 px-3 rounded">
-        Apply inputs locally
+      <button className="flex-1 bg-gray-700 hover:bg-gray-800 text-white text-xs py-2 px-3 rounded" onClick={saveCurrentOutput}>
+        Save output image
       </button>
 
-      <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 px-3 rounded">
-        Apply inputs globally
+      <button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 px-3 rounded" onClick={applyGlobally}>
+        Apply sketch inputs globally
       </button>
     </div>
 
