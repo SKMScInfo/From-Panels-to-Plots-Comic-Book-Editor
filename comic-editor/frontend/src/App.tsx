@@ -31,7 +31,7 @@ export default function ComicStudio() {
   const [pages, setPages] = useState<Page[]>(() => [createBlankPage(1)]);
   const [selectedPageIdx, setSelectedPageIdx] = useState<number>(0);
   const [selectedPanelIdx, setSelectedPanelIdx] = useState<number>(0);
-  const [activeTool, setActiveTool] = useState<string>("smudge");
+  const [activeTool, setActiveTool] = useState<string>("");
   const [promptText, setPromptText] = useState<string>("");
 
   // NEW: fortune sketch state
@@ -77,7 +77,13 @@ export default function ComicStudio() {
   // -------------------------
 
   return (
-  <div className="h-screen bg-gray-50 flex">
+  <div
+    className={`
+      h-screen bg-gray-50 flex 
+      ${activeTool ? `cursor-${activeTool}` : "cursor-default"}
+    `}
+  >
+
     {/* LEFT TOOLBAR */}
     <Toolbar
       activeTool={activeTool}

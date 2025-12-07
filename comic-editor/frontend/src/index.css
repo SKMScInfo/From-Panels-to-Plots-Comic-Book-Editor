@@ -78,3 +78,33 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+
+.cursor-toneBrush {
+  cursor: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'>\
+  <text x='12' y='32' font-size='28'>🖌️</text>\
+</svg>") 4 28, auto;
+}
+
+.cursor-smudge {
+  cursor: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'>\
+  <text x='10' y='32' font-size='28'>🎚️</text>\
+</svg>") 4 28, auto;
+}
+
+.cursor-eyedropper {
+  cursor: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48'>\
+  <text x='10' y='32' font-size='28'>🎨</text>\
+</svg>") 4 28, auto;
+}
+
+.cursor-prompt {
+  cursor: text;
+}
+
+.cursor-default {
+  cursor: default;
+}

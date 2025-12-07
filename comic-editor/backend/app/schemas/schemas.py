@@ -1,6 +1,18 @@
 from pydantic import BaseModel
 from typing import Optional, List
 
+class ToneSelection(BaseModel):
+    primary: str
+    secondary: Optional[str] = None
+    mix: float   # 0..1
+    intensity: float  # 0..1
+
+class Color(BaseModel):
+    r: int
+    g: int
+    b: int
+    hex: str
+
 
 
 class Tone(BaseModel):
@@ -76,7 +88,7 @@ class SmudgeRequest(BaseModel):
 
 class ToneRequest(BaseModel):
     page: Page
-    tone: str
+    tone: ToneSelection
 
 
 class ColorFillPoint(BaseModel):
@@ -87,7 +99,7 @@ class ColorFillPoint(BaseModel):
 class ColorFillRequest(BaseModel):
     page: Page
     point: ColorFillPoint
-    color: str
+    color: Color
 
 
 class ToolImageResponse(BaseModel):

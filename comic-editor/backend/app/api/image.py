@@ -1,4 +1,9 @@
+import os
+import shutil
 from fastapi import APIRouter
+from fastapi import UploadFile, File, Form
+from fastapi.responses import JSONResponse
+from app.utils.file_utils import return_all_default_pages, return_one_default_page
 
 from app.schemas.schemas import (
     ComicGenerateRequest,
@@ -9,6 +14,10 @@ from app.schemas.schemas import (
     Panel,
     Tone,
 )
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(BASE_DIR)                   # backend/
+CONTENT_DIR = os.path.join(BASE_DIR, "content")
 
 
 router = APIRouter(prefix="/image", tags=["image"])
@@ -74,5 +83,15 @@ async def generate_comic_globally(data: ComicGenerateAllRequest):
         generated_pages.append(new_page)
 
     return ComicGenerateAllResponse(pages=generated_pages)
+
+
+@router.post("/overwrite")
+async def overwrite_image(file: UploadFile = File(...), path: str = Form(...)):
+    full_path = os.path.join(CONTENT_DIR, os.path.basename(path))
+    print(full_path)
+    with open(full_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"status": "ok", "saved": full_path}
+
 
 

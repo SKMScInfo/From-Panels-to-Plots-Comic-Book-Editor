@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { Page } from "../types";
 import { applyChangesGlobally, generateComicPage } from "../api/imageApi";
+import { applyToneToPage, fillColorInPage, smudgePage } from "../api/tools";
+import { useEditorStore } from "../store/editorStore";
 
 interface PanelEditorProps {
   pages: Page[];
@@ -17,7 +19,8 @@ export default function PanelEditor({
   pages,
   setPages,
   selectedPageIdx,
-  selectedPanelIdx
+  selectedPanelIdx,
+  activeTool
 }: PanelEditorProps) {
   const [sketchPrompt, setSketchPrompt] = useState<string>("");
   const sketchCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -30,6 +33,59 @@ export default function PanelEditor({
 
   const page = pages[selectedPageIdx];
   const panel = page.panels[selectedPanelIdx];
+
+  const tone = useEditorStore((s) => s.tone);
+
+  const fillColor =useEditorStore((s) => s.colorFillPoint);
+
+  function getOutputCoords(e: React.MouseEvent<HTMLCanvasElement>) {
+    const canvas = outputCanvasRef.current!;
+    const rect = canvas.getBoundingClientRect();
+
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }
+
+
+  async function handleCanvasClick(e: React.MouseEvent<HTMLCanvasElement>) {
+    let response: any;
+
+    if (activeTool === "smudge") {
+      response = await smudgePage(page);
+    } else if (activeTool === "toneBrush") {
+      if (!tone) return; // or show a warning
+      response = await applyToneToPage(page, tone);
+    } else if (activeTool === "eyedropper") {
+      const canvas = outputCanvasRef.current;
+      if (!canvas) return;
+
+      const { x, y } = getOutputCoords(e); // 👈 canvas-relative coords
+
+      // if your store actually holds the selected COLOR, rename this to fillColor:
+      if(!fillColor)
+        return;
+
+      response = await fillColorInPage(page, x, y, fillColor);
+    } else {
+      // no tool selected → do nothing
+      return;
+    }
+
+    if (!response) return;
+
+    setPages((old) => {
+      const copy = structuredClone(old);
+      copy[selectedPageIdx] = response.page;
+      return copy;
+    });
+  }
+
+
 
   function drawImageContain(ctx: CanvasRenderingContext2D, img: HTMLImageElement, canvas: HTMLCanvasElement) {
     const iw = img.width;
@@ -161,7 +217,7 @@ export default function PanelEditor({
   }
 
   // reset output
-  function resetOutput() {
+  async function resetOutput() {
     const canvas = outputCanvasRef.current!;
     const ctx = outputCtxRef.current!;
 
@@ -329,6 +385,7 @@ export default function PanelEditor({
         <div className="flex-1 border rounded-lg overflow-hidden bg-white">
           <canvas
             ref={outputCanvasRef}
+            onClick={handleCanvasClick}
             width={600}
             height={400}
             className="w-full h-full"
