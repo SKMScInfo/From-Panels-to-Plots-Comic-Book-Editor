@@ -1,4 +1,7 @@
+import base64
+import json
 import os
+from pathlib import Path
 import shutil
 # app/api/image.py
 
@@ -18,123 +21,125 @@ from app.schemas.schemas import (
     Panel,
     Tone,
 )
+from datetime import datetime
 
 import openai
+from app.config import settings
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BASE_DIR = os.path.dirname(BASE_DIR)                   # backend/
-CONTENT_DIR = os.path.join(BASE_DIR, "content")
+CONTENT_DIR = Path(BASE_DIR) / "content"
 
 
 
 router = APIRouter(prefix="/image", tags=["image"])
 
 
+DB_PATH = Path(__file__).parent.parent.parent / "database/image.json"
+MODE = settings.MODE
+
+with open(DB_PATH, "r", encoding="utf-8") as f:
+    IMAGE_DB = json.load(f)
+
+#prompt_global=""
+
+LOG_DIR = Path(__file__).parent.parent.parent / "database/logs"
+LOG_DIR.mkdir(exist_ok=True)
+
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+LOG_PATH= LOG_DIR / f"image_prompts_{timestamp}.log"
+
+def log_prompt(prompt: str):
+    """Append each prompt to a single log file with separators."""
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write("\n" + "=" * 60 + "\n")
+        f.write(prompt.strip() + "\n")
+        f.write("=" * 60 + "\n")
+
+
+def database_lookup(prompt_global: str, lookup_type: str, optional_arg: str  = None):
+    
+    if prompt_global not in IMAGE_DB:
+        raise KeyError(f"Story not found: '{prompt_global}'")
+
+    entry = IMAGE_DB[prompt_global]
+
+    # Expanded prompt
+    if lookup_type == "imagePath":
+        return entry.get("imagePath", "")
+
+    else:
+        raise ValueError(f"Invalid lookup_type: {lookup_type}")
+
+
 # ---------------------
 # Shared image & tone helpers
 # ---------------------
 
-def build_image_prompt(
-    page: Page,
-    panel: Panel,
-    global_prompt: str,
-    page_index: int,
-    page_total: int,
-    panel_index: int,
-) -> str:
-    """
-    Build a detailed image prompt for a specific panel.
-
-    This follows the same structure as the helpers used in /story and /comic,
-    so that all image generation behaves consistently across the API.
-    """
-    page_pos = page_index + 1
-    total_pages = page_total
-
-    base_desc_parts: List[str] = []
-
-    if global_prompt:
-        base_desc_parts.append(global_prompt)
-
-    if page.storySentence:
-        base_desc_parts.append(f"Page story: {page.storySentence}")
-
-    if panel.caption:
-        base_desc_parts.append(f"Panel description: {panel.caption}")
-
-    scene_desc = " ".join(base_desc_parts).strip() or "A comic book scene."
-
-    # Compute a normalized position within the whole book
-    if total_pages > 1:
-        t = page_index / (total_pages - 1)
-    else:
-        t = 0.5
-
-    if t < 0.33:
-        phase_hint = "This is an opening scene, introducing characters or setting."
-    elif t < 0.66:
-        phase_hint = "This is a mid-story scene, with development or tension."
-    else:
-        phase_hint = "This is a late-story scene, approaching climax or resolution."
-
-    prompt = (
-        f"Create a detailed comic book style illustration for page {page_pos}, "
-        f"panel {panel_index + 1}. "
-        f"{phase_hint} "
-        f"Scene description: {scene_desc}. "
-        "Use clear visual storytelling, expressive characters, and strong composition. "
-        "High-quality comic book panel."
-    )
-
-    return prompt
+def build_image_prompt(page, global_prompt, sketch, page_index, page_total):
+    response= f"""
+You are modifiying a single comic image.
 
 
-def generate_image_from_prompt(prompt: str) -> Optional[str]:
+PAGE SCENE DESCRIPTION:
+{page.storySentence}
+
+
+USER SKETCH PROVIDED:
+The user drew a rough layout as a PNG sketch. Interpret only the composition,
+poses, and silhouette placement from the sketch. Do NOT replicate line-level
+details.
+
+OUTPUT REQUIREMENTS:
+- Same characters as current pages
+- Same style as a Japanese manga with soft shading
+- Keep lighting consistent with current pages
+- Follow the sketch composition closely
+- Return a clean polished comic-style illustration
+"""
+    log_prompt(response)
+    return response
+
+
+
+def generate_image_from_prompt(prompt: str,prompt_global: str) -> Optional[str]:
     """
     Call the OpenAI image API and return the generated image URL.
     Returns None if the generation fails.
     """
+    print(MODE)
     try:
-        response = openai.Image.create(
-            prompt=prompt,
-            n=1,
-            size="1024x1024",
-        )
-        return response["data"][0]["url"]
+        if MODE=="use_saved":
+            response=database_lookup(prompt_global,"imagePath")
+            return response
+        else:
+            response = openai.Image.create(
+                prompt=prompt,
+                n=1,
+                size="1024x1024",
+            )
+            return response["data"][0]["url"]
     except openai.error.OpenAIError as e:
         print(f"[image] Error generating image: {e}")
         return None
 
+def save_sketch_png(sketch_base64: str, filename: str):
+    #print("sketch",sketch_base64)
+    header, encoded = sketch_base64.split(",", 1)
+    binary = base64.b64decode(encoded)
 
-def compute_page_tone(index: int, total: int, base_tone: Optional[Tone] = None) -> Tone:
-    """
-    Compute a smooth brightness progression across pages.
+    output_path = CONTENT_DIR / "promptImage1" / filename
+    #print("outputpath ",output_path)
+    with open(output_path, "wb") as f:
+        f.write(binary)
 
-    This matches the tone behavior in /story and /comic, so that the same
-    comic rendered through different endpoints has a consistent visual flow.
-    """
-    if total <= 1:
-        t = 0.5
-    else:
-        t = index / (total - 1)
-
-    base_brightness = base_tone.brightness if base_tone else 1.0
-    base_contrast = base_tone.contrast if base_tone else 1.0
-    base_palette = base_tone.palette if base_tone else None
-
-    # 0.9 ~ 1.1 range (similar to your original demo logic)
-    brightness = base_brightness * (0.9 + 0.2 * t)
-
-    return Tone(
-        brightness=brightness,
-        contrast=base_contrast,
-        palette=base_palette,
-    )
+    return str(output_path)
 
 
 def apply_ai_generation_to_page(
     page: Page,
     prompt: str,
+    sketch: str,
     index: int = 0,
     total: int = 1,
 ) -> Page:
@@ -145,45 +150,28 @@ def apply_ai_generation_to_page(
     real image URLs using OpenAI. It also updates the tone based on
     page position.
     """
-    new_panels: List[Panel] = []
+    #new_panels: List[Panel] = []
 
-    for i, p in enumerate(page.panels):
-        image_prompt = build_image_prompt(
-            page=page,
-            panel=p,
-            global_prompt=prompt,
-            page_index=index,
-            page_total=total,
-            panel_index=i,
-        )
-
-        image_url = generate_image_from_prompt(image_prompt)
-        new_tone = compute_page_tone(
-            index=index,
-            total=total,
-            base_tone=p.tone,
-        )
-
-        new_panels.append(
-            Panel(
-                id=p.id,
-                image=image_url or p.image,  # fallback to existing image if generation fails
-                sketch=p.sketch,
-                tone=new_tone,
-                caption=p.caption or f"{prompt} (panel {i + 1})",
-            )
-        )
-
-    return Page(
-        id=page.id,
-        storySentence=page.storySentence or prompt,
-        panels=new_panels,
+    # for i, p in enumerate(page.panels):
+    save_sketch_png(sketch,f"sketch_{prompt}.png")
+    image_prompt = build_image_prompt(
+        page=page,
+        global_prompt=prompt,
+        sketch=sketch,
+        page_index=index,
+        page_total=total,
     )
+
+    image_url = generate_image_from_prompt(image_prompt,prompt)
+    page.panels[0].image=image_url
+
+    return page
 
 
 def apply_ai_generation_to_pages(
     pages: List[Page],
     prompt: str,
+    sketch:str,
 ) -> List[Page]:
     """
     Convenience helper: apply AI generation to a list of pages.
@@ -195,6 +183,7 @@ def apply_ai_generation_to_pages(
         new_page = apply_ai_generation_to_page(
             page=page,
             prompt=prompt,
+            sketch=sketch,
             index=idx,
             total=total,
         )
@@ -214,9 +203,12 @@ async def generate_comic_page(data: ComicGenerateRequest):
 
     This endpoint uses the same image generation logic as /story and /comic.
     """
+    #print("Sketch",data.sketch)
+    print("Prompt",data.prompt)
     generated_page = apply_ai_generation_to_page(
         page=data.page,
         prompt=data.prompt,
+        sketch=data.sketch,
         index=0,
         total=1,
     )
@@ -234,17 +226,21 @@ async def generate_comic_globally(data: ComicGenerateAllRequest):
     generated_pages = apply_ai_generation_to_pages(
         pages=data.pages,
         prompt=data.prompt,
+        sketch=data.sketch
     )
     return ComicGenerateAllResponse(pages=generated_pages)
 
 
 @router.post("/overwrite")
 async def overwrite_image(file: UploadFile = File(...), path: str = Form(...)):
-    full_path = os.path.join(CONTENT_DIR, os.path.basename(path))
+    full_path = CONTENT_DIR / os.path.basename(path)
     print(full_path)
+
     with open(full_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    return {"status": "ok", "saved": full_path}
+
+    return {"status": "ok", "saved": str(full_path)}
+
 
 
 

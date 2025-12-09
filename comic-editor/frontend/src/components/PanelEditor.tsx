@@ -245,8 +245,8 @@ export default function PanelEditor({
     const sketchBase64 =
       sketchCanvasRef.current?.toDataURL("image/png") || "";
     const response = await generateComicPage(
-      page.storySentence,
       sketchBase64,
+      sketchPrompt,
       pages[selectedPageIdx]
     );
 
@@ -343,8 +343,8 @@ export default function PanelEditor({
     const sketchBase64 =
     sketchCanvasRef.current?.toDataURL("image/png") || "";
     const response = await applyChangesGlobally(
-      page.storySentence,
       sketchBase64,
+      sketchPrompt,
       pages
     );
 

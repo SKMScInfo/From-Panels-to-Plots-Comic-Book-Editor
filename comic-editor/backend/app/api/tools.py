@@ -1,8 +1,16 @@
 # app/api/tools.py
 
-from typing import List
+import base64
+import json
+import os
+from pathlib import Path
+from datetime import datetime
+
+from typing import List, Optional
 
 from fastapi import APIRouter
+from fastapi.responses import JSONResponse
+
 from app.schemas.schemas import (
     SmudgeRequest,
     ToneRequest,
@@ -12,188 +20,237 @@ from app.schemas.schemas import (
     Panel,
     Tone,
 )
+import openai
+from app.config import settings
+
+# --------------------------
+# PATHS / GLOBALS
+# --------------------------
 
 router = APIRouter(prefix="/tools", tags=["tools"])
 
+BASE_DIR = Path(__file__).resolve().parents[2]
+CONTENT_DIR = BASE_DIR / "content"
+TOOLS_OUTPUT = CONTENT_DIR / "tools"
+TOOLS_OUTPUT.mkdir(exist_ok=True)
 
-# ---------------------
-# Internal demo helpers
-# ---------------------
+DB_PATH = BASE_DIR / "database/tools.json"
+MODE = settings.MODE
 
-def _demo_smudge(page: Page) -> Page:
+if DB_PATH.exists():
+    with open(DB_PATH, "r", encoding="utf-8") as f:
+        TOOLS_DB = json.load(f)
+else:
+    TOOLS_DB = {}
+
+# Logging
+LOG_DIR = BASE_DIR / "database" / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+LOG_PATH = LOG_DIR / f"tools_prompts_{timestamp}.log"
+
+def log_prompt(prompt: str):
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write("\n" + "=" * 60 + "\n")
+        f.write(prompt.strip() + "\n")
+        f.write("=" * 60 + "\n")
+
+# --------------------------
+# DATABASE LOOKUP
+# --------------------------
+
+def database_lookup(tool_name: str, image_path: str):
     """
-    Demo smudge tool.
-
-    In a real implementation, this would apply a smudge/blur effect to the image.
-    Here we:
-      - If a panel has no image, assign a 'demo://smudged-<id>' placeholder.
-      - Append ' (smudged)' to the caption so the frontend can see the change.
+    Look up from tools.json using the image path.
+    Example key:
+        TOOLS_DB["smudge"]["content/page1.png"]
     """
-    new_panels: List[Panel] = []
+    if tool_name not in TOOLS_DB:
+        raise KeyError(f"No entries for tool '{tool_name}'")
 
-    for p in page.panels:
-        new_panels.append(
-            Panel(
-                id=p.id,
-                image=p.image or f"demo://smudged-{p.id}",
-                sketch=p.sketch,
-                tone=p.tone,  # keep tone as-is
-                caption=(p.caption or "") + " (smudged)",
-            )
+    tool_section = TOOLS_DB[tool_name]
+
+    if image_path not in tool_section:
+        raise KeyError(f"No stored result for tool '{tool_name}' on image '{image_path}'")
+
+    return tool_section[image_path]
+
+def database_store(tool_name: str, image_path: str, output: dict):
+    """
+    Append or update an entry in tools.json.
+    """
+    if tool_name not in TOOLS_DB:
+        TOOLS_DB[tool_name] = {}
+
+    TOOLS_DB[tool_name][image_path] = output
+
+    with open(DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(TOOLS_DB, f, indent=4)
+
+
+# --------------------------
+# UTILS
+# --------------------------
+
+def save_image_bytes(img_bytes: bytes, filename: str) -> str:
+    output_path = TOOLS_OUTPUT / filename
+    with open(output_path, "wb") as f:
+        f.write(img_bytes)
+    return str(output_path)
+
+
+def call_openai_image(prompt: str) -> Optional[str]:
+    """Generate an image with OpenAI."""
+    try:
+        response = openai.Image.create(
+            prompt=prompt,
+            n=1,
+            size="1024x1024",
         )
-
-    return Page(
-        id=page.id,
-        storySentence=page.storySentence,
-        panels=new_panels,
-    )
+        return response["data"][0]["url"]
+    except Exception as e:
+        print(f"[tools] OpenAI image generation error:", e)
+        return None
 
 
-def _demo_tone(page: Page, tone_name: str) -> Page:
+# --------------------------
+# PROMPT BUILDERS
+# --------------------------
+
+def build_smudge_prompt(page: Page, image_path: str):
+    prompt = f"""
+You are applying a SMUDGE EFFECT to an existing comic panel.
+
+IMAGE PATH: {image_path}
+
+INSTRUCTIONS:
+- Keep characters, colors, and style intact.
+- Apply a light smudge effect across the main silhouette.
+- Maintain full manga aesthetic.
+
+Return a polished, smudged version of the image.
+"""
+    log_prompt(prompt)
+    return prompt
+
+
+def build_tone_prompt(page: Page, tone, image_path):
+    prompt = f"""
+Apply a TONE ADJUSTMENT to a manga-style image.
+
+IMAGE PATH: {image_path}
+
+TARGET TONE:
+- primary: {tone.primary}
+- secondary: {tone.secondary}
+- mix: {tone.mix}
+- intensity: {tone.intensity}
+
+INSTRUCTIONS:
+- Preserve the character design and line work.
+- Apply a palette shift consistent with manga shading.
+"""
+    log_prompt(prompt)
+    return prompt
+
+
+def build_color_fill_prompt(page: Page, x: int, y: int, color, image_path):
+    prompt = f"""
+Apply a COLOR FILL operation to this manga image.
+
+IMAGE PATH: {image_path}
+
+FILL REQUEST:
+- Click location: ({x}, {y})
+- Fill color: {color.hex} (rgb {color.r},{color.g},{color.b})
+
+INSTRUCTIONS:
+- Perform a region fill around the click point.
+- Maintain manga shading style.
+"""
+    log_prompt(prompt)
+    return prompt
+
+
+
+# --------------------------
+# APPLY TOOL OPERATIONS
+# --------------------------
+
+def _apply_tool(tool_name: str, page: Page, prompt: str) -> Page:
     """
-    Demo tone tool.
-
-    This function adjusts Tone based on the requested 'tone_name'.
-    It is designed to be consistent with how Tone is used elsewhere
-    in the system (brightness, contrast, optional palette).
-
-    Supported tone_name values (you can extend this list):
-      - "bright": higher brightness
-      - "dark": lower brightness
-      - "contrast": higher contrast
-      - "soft": slightly lower contrast and brightness
-      - anything else: no strong change (neutral)
+    Unified handler for smudge / tone / color-fill.
     """
-    new_panels: List[Panel] = []
+    original_path = page.panels[0].image
 
-    for p in page.panels:
-        base_brightness = p.tone.brightness
-        base_contrast = p.tone.contrast
-        base_palette = p.tone.palette
+    if not original_path:
+        raise ValueError("Panel has no image to modify.")
 
-        if tone_name == "bright":
-            brightness = base_brightness * 1.2
-            contrast = base_contrast
-            palette = base_palette
-        elif tone_name == "dark":
-            brightness = base_brightness * 0.8
-            contrast = base_contrast
-            palette = base_palette
-        elif tone_name == "contrast":
-            brightness = base_brightness
-            contrast = base_contrast * 1.3
-            palette = base_palette
-        elif tone_name == "soft":
-            brightness = base_brightness * 0.95
-            contrast = base_contrast * 0.9
-            palette = base_palette
-        else:
-            # Neutral / unknown tone: keep values almost unchanged
-            brightness = base_brightness
-            contrast = base_contrast
-            palette = base_palette
+    # === SAVED MODE ===
+    if MODE == "use_saved":
+        try:
+            stored = database_lookup(tool_name, original_path)
+            page.panels[0].image = stored["imagePath"]
+            return page
+        except KeyError:
+            raise ValueError(f"No saved result found for tool '{tool_name}' and image '{original_path}'")
 
-        new_panels.append(
-            Panel(
-                id=p.id,
-                image=p.image,
-                sketch=p.sketch,
-                tone=Tone(
-                    brightness=brightness,
-                    contrast=contrast,
-                    palette=palette,
-                ),
-                caption=(p.caption or "") + f" ({tone_name})",
-            )
-        )
+    # === LIVE MODE ===
+    new_image_url = call_openai_image(prompt)
 
-    return Page(
-        id=page.id,
-        storySentence=page.storySentence,
-        panels=new_panels,
-    )
+    if not new_image_url:
+        raise RuntimeError("OpenAI image generation failed.")
+
+    # Save in database
+    database_store(tool_name, original_path, {
+        "imagePath": new_image_url
+    })
+
+    page.panels[0].image = new_image_url
+    return page
 
 
-def _demo_color_fill(page: Page, x: int, y: int, color: str) -> Page:
-    """
-    Demo color fill tool.
 
-    In a real implementation, (x, y) would be used to compute a region and
-    apply a flood fill or recoloring operation to the underlying image.
-
-    For now, this demo:
-      - Ignores (x, y).
-      - Sets the 'palette' field of each panel's tone to the given color.
-      - Appends a '(filled COLOR)' marker to the caption.
-    """
-    new_panels: List[Panel] = []
-
-    for p in page.panels:
-        new_panels.append(
-            Panel(
-                id=p.id,
-                image=p.image,
-                sketch=p.sketch,
-                tone=Tone(
-                    brightness=p.tone.brightness,
-                    contrast=p.tone.contrast,
-                    palette=color,
-                ),
-                caption=(p.caption or "") + f" (filled {color})",
-            )
-        )
-
-    return Page(
-        id=page.id,
-        storySentence=page.storySentence,
-        panels=new_panels,
-    )
-
-
-# ---------------------
-# Endpoints
-# ---------------------
+# --------------------------
+# ENDPOINTS
+# --------------------------
 
 @router.post("/smudge", response_model=ToolImageResponse)
 async def smudge_page(data: SmudgeRequest):
-    """
-    Apply a demo smudge effect to the given page and return the updated page.
-
-    The client should pass the full Page object in the request; the response
-    contains the modified Page inside ToolImageResponse.
-    """
-    page = _demo_smudge(data.page)
-    return ToolImageResponse(page=page)
+    page = data.page
+    prompt = build_smudge_prompt(page, page.panels[0].image)
+    updated = _apply_tool("smudge", page, prompt)
+    return ToolImageResponse(page=updated)
 
 
 @router.post("/tone", response_model=ToolImageResponse)
 async def apply_tone(data: ToneRequest):
-    """
-    Apply a demo tone adjustment to the given page based on 'tone' string.
+    page = data.page
+    tone = data.tone
+    prompt = build_tone_prompt(page, tone, page.panels[0].image)
+    updated = _apply_tool("tone", page, prompt)
 
-    This is purely metadata-level (Tone struct); it does not modify the image
-    pixels yet, but can be used by the frontend or a later image-processing
-    backend to apply real filters.
-    """
-    page = _demo_tone(data.page, data.tone)
-    return ToolImageResponse(page=page)
+    # Update metadata
+    updated.panels[0].tone.brightness = tone.mix
+    updated.panels[0].tone.contrast = tone.intensity
+    updated.panels[0].tone.palette = tone.primary
+
+    return ToolImageResponse(page=updated)
 
 
 @router.post("/color-fill", response_model=ToolImageResponse)
 async def fill_color(data: ColorFillRequest):
-    """
-    Apply a demo color fill to the given page.
-
-    The 'color' string is stored in the Tone.palette of each panel, and
-    the caption is annotated with the applied color. In a real system this
-    could be used to drive a recoloring pipeline on the actual image.
-    """
-    page = _demo_color_fill(
-        data.page,
+    page = data.page
+    prompt = build_color_fill_prompt(
+        page,
         data.point.x,
         data.point.y,
         data.color,
+        page.panels[0].image,
     )
-    return ToolImageResponse(page=page)
+    updated = _apply_tool("color-fill", page, prompt)
 
+    updated.panels[0].caption += f"\nColor fill applied: {data.color.hex}"
+    updated.panels[0].tone.palette = data.color.hex
 
+    return ToolImageResponse(page=updated)
