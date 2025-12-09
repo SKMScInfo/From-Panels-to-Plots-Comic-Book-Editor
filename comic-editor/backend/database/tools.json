@@ -1,7 +1,5 @@
 {
-  "Cone shaped watch": {
-    "smudge":{"imagePath": "/content/promptTools1/image.png"},
-    "colour":{"imagePath": "/content/promptTools1/colour.png"},
-    "tone":{"imagePath": "/content/promptTools1/tone.png"}
-  }
+    "smudge":{"/content/prompt1/image4.png": "/content/promptTools1/smudge.png"},
+    "color-fill":{"/content/prompt1/image8.png": "/content/promptTools1/color.png"},
+    "tone":{"/content/prompt1/image12.png": "/content/promptTools1/tone.png"}
 }

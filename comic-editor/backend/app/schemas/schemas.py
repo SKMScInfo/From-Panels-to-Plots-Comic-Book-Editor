@@ -92,8 +92,8 @@ class ToneRequest(BaseModel):
 
 
 class ColorFillPoint(BaseModel):
-    x: int
-    y: int
+    x: float
+    y: float
 
 
 class ColorFillRequest(BaseModel):

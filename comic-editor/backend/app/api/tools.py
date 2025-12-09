@@ -7,6 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 from typing import List, Optional
+from fastapi import Request
 
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -92,11 +93,11 @@ def database_store(tool_name: str, image_path: str, output: dict):
 # UTILS
 # --------------------------
 
-def save_image_bytes(img_bytes: bytes, filename: str) -> str:
-    output_path = TOOLS_OUTPUT / filename
-    with open(output_path, "wb") as f:
-        f.write(img_bytes)
-    return str(output_path)
+# def save_image_bytes(img_bytes: bytes, filename: str) -> str:
+#     output_path = TOOLS_OUTPUT / filename
+#     with open(output_path, "wb") as f:
+#         f.write(img_bytes)
+#     return str(output_path)
 
 
 def call_openai_image(prompt: str) -> Optional[str]:
@@ -190,7 +191,7 @@ def _apply_tool(tool_name: str, page: Page, prompt: str) -> Page:
     if MODE == "use_saved":
         try:
             stored = database_lookup(tool_name, original_path)
-            page.panels[0].image = stored["imagePath"]
+            page.panels[0].image = stored
             return page
         except KeyError:
             raise ValueError(f"No saved result found for tool '{tool_name}' and image '{original_path}'")
@@ -239,6 +240,8 @@ async def apply_tone(data: ToneRequest):
 
 
 @router.post("/color-fill", response_model=ToolImageResponse)
+# async def color_fill(request: Request):
+#     print(await request.json())  # SHOW EXACT PAYLOAD
 async def fill_color(data: ColorFillRequest):
     page = data.page
     prompt = build_color_fill_prompt(
