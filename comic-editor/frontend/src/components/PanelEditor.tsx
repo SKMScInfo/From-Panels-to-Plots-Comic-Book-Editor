@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { Page } from "../types";
 import { applyChangesGlobally, generateComicPage } from "../api/imageApi";
-import { applyToneToPage, fillColorInPage, smudgePage } from "../api/tools";
+import { applyToneToPage, changeTextBoxInPage, fillColorInPage, smudgePage } from "../api/tools";
 import { useEditorStore } from "../store/editorStore";
 
 interface PanelEditorProps {
@@ -38,6 +38,8 @@ export default function PanelEditor({
 
   const fillColor =useEditorStore((s) => s.colorFillPoint);
 
+  const dialogueText =useEditorStore((s) => s.prompt);
+
   function getOutputCoords(e: React.MouseEvent<HTMLCanvasElement>) {
     const canvas = outputCanvasRef.current!;
     const rect = canvas.getBoundingClientRect();
@@ -71,7 +73,20 @@ export default function PanelEditor({
         return;
 
       response = await fillColorInPage(page, x, y, fillColor);
-    } else {
+    } else if (activeTool === "prompt") {
+      const canvas = outputCanvasRef.current;
+      if (!canvas) return;
+
+      const { x, y } = getOutputCoords(e); // 👈 canvas-relative coords
+
+      // if your store actually holds the selected COLOR, rename this to fillColor:
+      if(!dialogueText)
+        return;
+
+      response = await changeTextBoxInPage(page, x, y, dialogueText);
+    }
+    
+    else {
       // no tool selected → do nothing
       return;
     }

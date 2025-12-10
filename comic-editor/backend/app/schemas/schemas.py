@@ -126,3 +126,9 @@ class ExportRequest(BaseModel):
 class ExportResponse(BaseModel):
     status: str
     path: Optional[str] = None
+
+
+class PromptTextRequest(BaseModel):
+    page: Page
+    point: ColorFillPoint
+    prompt: str

@@ -13,6 +13,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 from app.schemas.schemas import (
+    PromptTextRequest,
     SmudgeRequest,
     ToneRequest,
     ColorFillRequest,
@@ -172,6 +173,30 @@ INSTRUCTIONS:
     log_prompt(prompt)
     return prompt
 
+def build_prompt_text_tool(page: Page, x: int, y: int, user_prompt: str, image_path: str):
+    """
+    Build an OpenAI prompt that rewrites or adds text to a specific area of the comic panel.
+    """
+    prompt = f"""
+You are modifying TEXT inside a manga-style comic panel.
+
+IMAGE PATH: {image_path}
+
+TEXT EDIT REQUEST:
+- Target location: ({x}, {y})
+- New text: "{user_prompt}"
+
+INSTRUCTIONS:
+- Preserve art, characters, and style.
+- Only alter or insert text bubble at the specified location.
+- Use consistent manga font style.
+- Do NOT change the drawing except to place or adjust a text bubble.
+
+Return an image with the updated text.
+"""
+    log_prompt(prompt)
+    return prompt
+
 
 
 # --------------------------
@@ -257,3 +282,29 @@ async def fill_color(data: ColorFillRequest):
     updated.panels[0].tone.palette = data.color.hex
 
     return ToolImageResponse(page=updated)
+
+
+@router.post("/prompt", response_model=ToolImageResponse)
+async def apply_prompt_text(data: PromptTextRequest):
+    page = data.page
+    x = data.point.x
+    y = data.point.y
+    user_prompt = data.prompt
+
+    # Build the prompt sent to OpenAI
+    prompt = build_prompt_text_tool(
+        page,
+        x,
+        y,
+        user_prompt,
+        page.panels[0].image,
+    )
+
+    # Run through unified tool handler
+    updated = _apply_tool("prompt", page, prompt)
+
+    # Optionally annotate caption or metadata
+    updated.panels[0].caption += f"\nText updated near ({x},{y})."
+
+    return ToolImageResponse(page=updated)
+

@@ -1,5 +1,31 @@
 {
   "Cone shaped watch": {
+    "imagePath": "/content/promptImage1/localImagechange1.png"
+  },
+  "Portal Shape": {
+    "imagePath": "/content/promptImage1/localImagechange2.png"
+  },
+  "Bearded Professor": {
+    "imagePath": "/content/promptImage1/localImagechange3.png"
+  },
+  "Setting Sun": {
+    "imagePath": "/content/promptImage1/localImagechange4.png"
+  },
+  "big house, countryside":{
+    "imagePath": "/content/promptImage1/imageSketchOnly1.png"
+  },
+  "door, person entering":{
+    "imagePath": "/content/promptImage1/imageSketchOnly2.png"
+  },
+  "forest, surprise people meeting":{
+    "imagePath": "/content/promptImage1/imageSketchOnly3.png"
+  },
+  "Cat's face":{
+    "imagePath21":"/content/promptImage1/image1.png",
+    "imagePath22":"/content/promptImage1/image1.png",
+    "imagePath23":"/content/promptImage1/image1.png"
+  },
+    "Cinderlla , red dress, green forest": {
     "imagePath": "/content/promptImage1/image.png"
   }
 }

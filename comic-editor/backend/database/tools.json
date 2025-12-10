@@ -1,5 +1,6 @@
 {
-    "smudge":{"/content/prompt1/image4.png": "/content/promptTools1/smudge.png"},
-    "color-fill":{"/content/prompt1/image8.png": "/content/promptTools1/color.png"},
-    "tone":{"/content/prompt1/image12.png": "/content/promptTools1/tone.png"}
+    "smudge":{"/content/prompt1/image13.png": "/content/promptTools1/smudge1.png","/content/prompt1/image7.png": "/content/promptTools1/smudge2.png"},
+    "color-fill":{"/content/prompt1/image8.png": "/content/promptTools1/color1.png","/content/promptTools1/color1.png":"/content/promptTools1/color2.png","/content/promptTools1/color2.png":"/content/promptTools1/color3.png"},
+    "tone":{"/content/promptTools1/color2.png": "/content/promptTools1/tone1.png","/content/prompt1/image30.png": "/content/promptTools1/tone2.png"},
+    "prompt":{"/content/prompt1/image15.png": "/content/promptTools1/prompt1.png","/content/promptTools1/prompt1.png":"/content/promptTools1/prompt2.png"}
 }

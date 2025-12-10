@@ -148,12 +148,63 @@ export default function PromptAndSketch({
           />
         </div>
       </div>
-      <button
-        className="mt-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition w-full"
-        onClick={handleGenerateStory}
-      >
-        Generate comic book
-      </button>
+      {/* BUTTON ROW */}
+<div className="grid grid-cols-3 gap-2 mt-2">
+  
+  {/* ERASE SKETCH */}
+  <button
+    className="bg-red-500 hover:bg-red-600 text-white text-sm font-semibold py-2 rounded-lg transition"
+    onClick={() => {
+      // Clear canvas visually
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const ctx = canvas.getContext("2d")!;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Redraw baseline background line (optional)
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "#e0e0e0";
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+      }
+
+      // Remove stored sketch
+      setFortuneSketch("");
+    }}
+  >
+    Erase Sketch
+  </button>
+
+  {/* RESET STORY */}
+  <button
+    className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-semibold py-2 rounded-lg transition"
+    onClick={() => {
+      // Reset pages to an empty story with 1 blank page
+      setPages((prev) => {
+        if (prev.length === 0) return [];
+        const firstPage = prev[0];
+        firstPage.panels[0].image=""
+        firstPage.storySentence=""
+        return [firstPage]; // keep page 1 only
+      });
+    }}
+  >
+    Reset Story
+  </button>
+
+  {/* GENERATE STORY */}
+  <button
+    className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2 rounded-lg transition"
+    onClick={handleGenerateStory}
+  >
+    Generate
+  </button>
+
+</div>
+
 
     </div>
   );

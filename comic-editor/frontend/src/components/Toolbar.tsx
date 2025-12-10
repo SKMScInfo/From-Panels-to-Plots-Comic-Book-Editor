@@ -1,8 +1,8 @@
 import ToolButton from "./ToolButton";
-import ToneWheel from "./ToneWheel"; // ⬅️ make sure this exists
+import ToneWheel from "./ToneWheel";
+import ColorWheel from "./ColourWheel";
 import { useState } from "react";
 import { useEditorStore } from "../store/editorStore";
-import ColorWheel from "./ColourWheel";
 
 interface ToolbarProps {
   activeTool: string;
@@ -19,13 +19,18 @@ export default function Toolbar({
 }: ToolbarProps) {
   const [showToneWheel, setShowToneWheel] = useState(false);
   const [showColorWheel, setShowColorWheel] = useState(false);
+
+  // NEW STATE FOR PROMPT TOOL
+  const [showPromptPanel, setShowPromptPanel] = useState(false);
+  const [promptText, setPromptText] = useState("");
+
   const setTone = useEditorStore((s) => s.setTone);
   const setFillColor = useEditorStore((s) => s.setFillColor);
+  const savePrompt = useEditorStore((s) => s.setPrompt); // ← optional store method
+
   return (
     <>
-      {/* ─────────────────────────────
-          SIDEBAR TOOLBAR  
-      ───────────────────────────── */}
+      {/* LEFT TOOLBAR */}
       <aside className="w-24 bg-white border-r p-4 flex flex-col gap-4">
         <ToolButton
           icon="🎚️"
@@ -40,10 +45,8 @@ export default function Toolbar({
           active={activeTool === "toneBrush"}
           onClick={() => {
             if (activeTool === "toneBrush") {
-              // already active → toggle the wheel
               setShowToneWheel((prev) => !prev);
             } else {
-              // activate tool and open wheel
               setActiveTool("toneBrush");
               setShowToneWheel(true);
             }
@@ -55,22 +58,26 @@ export default function Toolbar({
           active={activeTool === "eyedropper"}
           onClick={() => {
             if (activeTool === "eyedropper") {
-              // already active → toggle the wheel
               setShowColorWheel((prev) => !prev);
             } else {
-              // activate tool and open wheel
               setActiveTool("eyedropper");
               setShowColorWheel(true);
             }
           }}
         />
 
+        {/* PROMPT TOOL */}
         <ToolButton
           icon="💬"
           active={activeTool === "prompt"}
-          onClick={() =>
-            setActiveTool(activeTool === "prompt" ? "" : "prompt")
-          }
+          onClick={() => {
+            if (activeTool === "prompt") {
+              setShowPromptPanel((prev) => !prev);
+            } else {
+              setActiveTool("prompt");
+              setShowPromptPanel(true);
+            }
+          }}
         />
 
         <div className="pt-4 border-t flex flex-col gap-2">
@@ -83,16 +90,19 @@ export default function Toolbar({
         </div>
       </aside>
 
-      {/* ─────────────────────────────
-          FLOATING TONE WHEEL PANEL
-      ───────────────────────────── */}
+      {/* TONE WHEEL */}
       {activeTool === "toneBrush" && showToneWheel && (
         <div className="absolute left-24 top-4 z-50">
           <div className="bg-white rounded-xl shadow-lg p-4">
-            <ToneWheel onApply={(tone) => {setTone(tone)}} onClose={() => setShowToneWheel(false)} />
+            <ToneWheel
+              onApply={(tone) => setTone(tone)}
+              onClose={() => setShowToneWheel(false)}
+            />
           </div>
         </div>
       )}
+
+      {/* COLOR WHEEL */}
       {activeTool === "eyedropper" && showColorWheel && (
         <div className="absolute left-24 top-36 z-50">
           <div className="bg-white rounded-xl shadow-lg p-4">
@@ -103,6 +113,33 @@ export default function Toolbar({
           </div>
         </div>
       )}
+
+      {/* RIGHT-SIDE PROMPT PANEL */}
+{/* RIGHT-SIDE PROMPT PANEL */}
+{activeTool === "prompt" && showPromptPanel && (
+  <div className="absolute left-28 top-4 w-80 z-50">
+    <div className="bg-white rounded-xl shadow-lg p-4 flex flex-col gap-4">
+      <h3 className="font-semibold text-lg">Enter Prompt</h3>
+
+      <textarea
+        className="w-full h-40 border rounded p-2"
+        placeholder="Describe your scene..."
+        value={promptText}
+        onChange={(e) => setPromptText(e.target.value)}
+      />
+
+      <button
+        className="btn-primary w-full py-2 rounded bg-blue-600 text-white"
+        onClick={() => {
+          savePrompt(promptText);
+          setShowPromptPanel(false);
+        }}
+      >
+        Save
+      </button>
+    </div>
+  </div>
+)}
 
     </>
   );

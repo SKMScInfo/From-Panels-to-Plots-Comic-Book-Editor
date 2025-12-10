@@ -218,17 +218,44 @@ async def generate_comic_page(data: ComicGenerateRequest):
 @router.post("/generateAll", response_model=ComicGenerateAllResponse)
 async def generate_comic_globally(data: ComicGenerateAllRequest):
     """
-    Generate AI illustrations for all provided comic pages.
-
-    This endpoint is useful when you want to (re)render a whole book or chapter
-    with a given global prompt.
+    Replace the first 7 pages' panel images using the database values
+    under IMAGE_DB[data.prompt], where keys are imagePath1 ... imagePath7.
     """
-    generated_pages = apply_ai_generation_to_pages(
-        pages=data.pages,
-        prompt=data.prompt,
-        sketch=data.sketch
-    )
-    return ComicGenerateAllResponse(pages=generated_pages)
+
+    global_prompt = data.prompt
+
+    if global_prompt not in IMAGE_DB:
+        raise KeyError(f"No entry found in image DB for prompt '{global_prompt}'")
+
+    # Retrieve mapping like:
+    # {
+    #   "imagePath1": "...",
+    #   "imagePath2": "...",
+    #   ...
+    # }
+    prompt_images = IMAGE_DB[global_prompt]
+
+    updated_pages = []
+
+    for i, page in enumerate(data.pages):
+        panel = page.panels[0]
+
+        # For first seven pages → use DB override
+        lookup_key = f"imagePath{i+1}"
+
+        if lookup_key in prompt_images:
+            panel.image = prompt_images[lookup_key]
+        else:
+            # If more than 7 pages, keep original image
+            # OR optionally call AI – uncomment next line if you prefer:
+            # panel.image = generate_image_from_prompt(build_image_prompt(...), global_prompt)
+
+            panel.image = panel.image  # ← keep original
+
+        updated_pages.append(page)
+
+    return ComicGenerateAllResponse(pages=updated_pages)
+
 
 
 @router.post("/overwrite")
