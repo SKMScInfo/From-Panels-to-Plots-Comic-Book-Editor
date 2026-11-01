@@ -27,27 +27,13 @@ An AI-assisted, multimodal comic authoring system built as part of Master's rese
 
 ---
 
+
 ## 🚀 Interface Overview
 
 1. **Story Authoring Panel:** Input prompts, character names, and fortune curves.
 2. **Sketch-Image Workspace:** Draw freehand sketches and provide optional keyword-based context for localized panel edits.
 3. **Storyline Navigator:** Overview of multi-page layouts, captions, and sequential navigation.
 4. **Tool Sidebar:** Mode-switching workspace for drawing, text edits, and tonal adjustments.
-
----
-
-## 📜 Citation & Academic Context
-
-This project was conducted as part of graduate research at the Université de Montréal under academic supervision.
-
-If you reference or build upon this work, please cite:
-```bibtex
-@inproceedings{sangwan2025panels,
-  title={From Panels to Plots: A Multiview Interface for Coherent Comic Storytelling},
-  author={Sangwan, Kushal and An, Na},
-  booktitle={Graduate Research Report, Universit{\'e} de Montr{\'e}al},
-  year={2025}
-}
 
 
 Backend (FastAPI)
@@ -67,6 +53,23 @@ Frontend (React + Vite)
 cd frontend
 npm install
 npm run dev
+
+---
+
+## 📜 Citation & Academic Context
+
+This project was conducted as part of graduate research at the Université de Montréal under academic supervision.
+
+If you reference or build upon this work, please cite:
+```bibtex
+@inproceedings{sangwan2025panels,
+  title={From Panels to Plots: A Multiview Interface for Coherent Comic Storytelling},
+  author={Sangwan, Kushal and An, Na},
+  booktitle={Graduate Research Report, Universit{\'e} de Montr{\'e}al},
+  year={2025}
+}
+
+
 
 
 Frontend runs at:
